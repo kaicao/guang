@@ -1,1 +1,14 @@
 /.idea
+target
+logs
+.project
+.settings
+.classpath
+*.iml
+*.ipr
+*.iws
+*.idea*
+RUNNING_PID
+dependency-reduced-pom.xml
+*.hprof
+events.db
