@@ -38,6 +38,13 @@ public class DisruptorTest {
         }
     }
 
+    public static class TestEventWorkHandler implements WorkHandler<TestEvent> {
+        @Override
+        public void onEvent(TestEvent event) throws Exception {
+            executes.incrementAndGet();
+        }
+    }
+
     public static class TestEventProducer {
         private static final EventTranslatorOneArg<TestEvent, Long> TRANSLATOR = new EventTranslatorOneArg<TestEvent, Long>() {
             public void translateTo(TestEvent event, long sequence, Long arg0) {
@@ -82,6 +89,7 @@ public class DisruptorTest {
         Disruptor<TestEvent> disruptor = new Disruptor<>(factory, bufferSize, consumers, ProducerType.SINGLE, new SleepingWaitStrategy());
         // Connect with handler
         disruptor.handleEventsWith(new TestEventHandler());
+        //disruptor.handleEventsWithWorkerPool(createWorkPool(4));
         System.out.println("Start Disruptor");
         // Start disruptor, starts all threads running
         // Get ringbuffer from disruptor to be used for publishing
@@ -99,15 +107,25 @@ public class DisruptorTest {
         System.exit(1);
     }
 
+    private static TestEventWorkHandler[] createWorkPool(int amount) {
+        TestEventWorkHandler[] result = new TestEventWorkHandler[amount];
+        for (int i = 0; i < amount; i ++) {
+            result[i] = new TestEventWorkHandler();
+        }
+        return result;
+    }
+
     /**
      *
      OS X version 10.9.5, 2.7GHz Intel Core i5, 8G 1600MHz DDR3
      Java 1.8.0_20.jdk
 
-     only around 50% CPU usage
+     Only 1 core fully loaded when use handleEventsWith(EventHandler), all cores fully loaded when use handleEventsWithWorkerPool(WorkPool)
+     and handleEventsWith is more efficient both CPU usage and execution cycles
 
      Last	RB size	C. pool	P. Strat.	W.Strat.		C. execution
-     60s	16_384	4 fixed	SINGLE	SLEEPWAIT	1,196,292,129
+
+     60s	16_384	2 fixed	SINGLE	SLEEPWAIT	1,169,176,405
      60s	16_384	8 fixed	SINGLE	SLEEPWAIT	1,180,177,835
      60s	16_384	16fixed	SINGLE	SLEEPWAIT	1,198,897,808
      60s	16_384	cached	SINGLE 	SLEEPWAIT	1,173,763,690
@@ -129,5 +147,10 @@ public class DisruptorTest {
      60s	16_384	2 fixed	SINGLE	BUSYSPIN	   1,196,465,024
      60s	16_384	8 fixed	SINGLE	BUSYSPIN	   1,197,655,730
      60s	16_384	cached	SINGLE 	BUSYSPIN	   1,157,914,064
+
+     // Use WorkPool (all cores fully loaded)
+     4	60s	16_384	cached	SINGLE 	SLEEPWAIT	540,653,472
+     8	60s	16_384	cached	SINGLE 	SLEEPWAIT	634,761,534
+     16	60s	16_384	cached	SINGLE 	SLEEPWAIT	644,594,424
      */
 }
